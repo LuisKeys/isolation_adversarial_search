@@ -17,7 +17,7 @@ from my_custom_player import CustomPlayer
 
 logger = logging.getLogger(__name__)
 
-NUM_PROCS = 1
+NUM_PROCS = 6
 NUM_ROUNDS = 1  # number times to replicate the match; increase for higher confidence estimate
 TIME_LIMIT = 150  # number of milliseconds before timeout
 
@@ -107,6 +107,7 @@ def main(args):
     key = args.opponent.upper()
     test_agent = TEST_AGENTS[key]
     custom_agent = Agent(CustomPlayer, "Custom Agent")
+    print(key)
     wins, num_games = play_matches(custom_agent, custom_agent, args)
 
     logger.info("Your agent won {:.1f}% of matches against {}".format(

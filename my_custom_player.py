@@ -38,17 +38,16 @@ class CustomPlayer(DataPlayer):
         #          (the timer is automatically managed for you)
         if state.ply_count < 2:
             if 57 in state.actions():
-                self.queue.put(57)
+                self.queue.put(57)                
             else:
                 self.queue.put(random.choice(state.actions()))
         else:
           last_action = None
-          for depth in range(1, 5):
+          for depth in range(1, 4):
             actions = self.alpha_beta_search(state, depth)
             self.queue.put(actions)
             #dbstate = DebugState.from_state(state)
             #print(dbstate)
-
 
     def alpha_beta_search(self, state, depth):
 
@@ -92,4 +91,56 @@ class CustomPlayer(DataPlayer):
         opp_loc = state.locs[1 - self.player_id]
         cust_agent_liberties = state.liberties(cust_agent_loc)
         opp_liberties = state.liberties(opp_loc)
-        return len(cust_agent_liberties) - 2 * len(opp_liberties)
+        partition_score = self.check_partition(cust_agent_loc, opp_loc, state)        
+        result = len(cust_agent_liberties) - len(opp_liberties)
+        #result = partition_score * len(cust_agent_liberties) - 2 * len(opp_liberties)
+        #result = 0
+        return result
+
+    def check_partition(self, cust_agent_loc, opp_loc, opp_liberties):
+        cust_x, cust_y = DebugState.ind2xy(cust_agent_loc)
+        opp_x, opp_y = DebugState.ind2xy(opp_loc)
+
+        result = 1
+
+        if opp_x > cust_x and opp_x - cust_x < 3 and cust_x > 6:
+            result += self.get_blocked(cust_x, cust_y, opp_liberties, True, False, False, False)
+
+        if opp_x < cust_x and cust_x - opp_x < 3 and cust_x < 2:
+            result += self.get_blocked(cust_x, cust_y, opp_liberties, False, True, False, False)
+
+        if opp_y > cust_y and opp_y - cust_y < 3 and cust_y > 8:
+            result += self.get_blocked(cust_x, cust_y, opp_liberties, False, False, True, False)
+
+        if opp_y < cust_y and cust_y - opp_y < 3 and cust_y < 2:
+            result += self.get_blocked(cust_x, cust_y, opp_liberties, False, False, False, True)
+
+        
+        return result
+    
+    def get_blocked(self, cust_x, cust_y, opp_liberties, left, right, top, bottom):
+
+        blocked = True
+        for liberty in opp_liberties.locs:
+            opp_x, opp_y = DebugState.ind2xy(liberty)
+
+            if left and opp_x <= cust_x:
+                blocked = False
+                break
+
+            if right and opp_x >= cust_x:
+                blocked = False
+                break
+
+            if top and opp_y >= cust_y:
+                blocked = False
+                break
+
+            if bottom and opp_y <= cust_x:
+                blocked = False
+                break
+
+        if blocked:
+            return 1
+
+        return 0

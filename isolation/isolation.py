@@ -112,6 +112,7 @@ class Isolation(NamedTuple('Isolation', [('board', int), ('ply_count', int), ('l
         # update the board to block the ending cell from the new move
         board = self.board ^ (1 << player_location)
         locs = (self.locs[0], player_location) if self.player() else (player_location, self.locs[1])
+        #print(self.ply_count)
         return Isolation(board=board, ply_count=self.ply_count + 1, locs=locs)
 
     def terminal_test(self):
