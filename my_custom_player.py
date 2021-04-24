@@ -1,5 +1,6 @@
 from isolation import Isolation, DebugState
 from sample_players import DataPlayer
+import math
 import random
 
 class CustomPlayer(DataPlayer):
@@ -16,6 +17,8 @@ class CustomPlayer(DataPlayer):
       any pickleable object to the self.context attribute.
     **********************************************************************
     """
+
+    _total_iterations = 0
     def get_action(self, state):
         """ Employ an adversarial search technique to choose an action
         available in the current state calls self.queue.put(ACTION) at least
@@ -47,13 +50,12 @@ class CustomPlayer(DataPlayer):
             actions = self.alpha_beta_search(state, depth)
             self.queue.put(actions)
             #dbstate = DebugState.from_state(state)
-            #print(dbstate)
 
     def alpha_beta_search(self, state, depth):
 
         def min_value(state, alpha, beta, depth):
             if state.terminal_test(): return state.utility(self.player_id)
-            if depth <= 0: return self.score(state)
+            if depth <= 0: return self.score(state, depth)
             min_val = float("inf")
             for action in state.actions():
                 min_val = min(min_val, max_value(state.result(action), alpha, beta, depth-1))
@@ -61,7 +63,7 @@ class CustomPlayer(DataPlayer):
 
         def max_value(state, alpha, beta, depth):
             if state.terminal_test(): return state.utility(self.player_id)
-            if depth <= 0: return self.score(state)
+            if depth <= 0: return self.score(state, depth)
             max_val = float("-inf")
             for action in state.actions():
                 max_val = max(max_val, min_value(state.result(action), alpha, beta, depth-1))
@@ -81,66 +83,25 @@ class CustomPlayer(DataPlayer):
         
         next_move = (None, float("-inf"), float("-inf"))
 
+        count = 0
+        actions_num = len(state.actions())
         for action in state.actions():
-            next_move = get_best_action(next_move, action)
+            if count < actions_num / 2:
+                self._total_iterations += 1
+                next_move = get_best_action(next_move, action)
+                count += 1
         
         return next_move[0]
 
-    def score(self, state):
+    def ind2xy(self, ind):
+        return (ind % (11), ind // (11))
+
+    def score(self, state, depth):
         cust_agent_loc = state.locs[self.player_id]
         opp_loc = state.locs[1 - self.player_id]
         cust_agent_liberties = state.liberties(cust_agent_loc)
         opp_liberties = state.liberties(opp_loc)
-        partition_score = self.check_partition(cust_agent_loc, opp_loc, state)        
-        result = len(cust_agent_liberties) - len(opp_liberties)
-        #result = partition_score * len(cust_agent_liberties) - 2 * len(opp_liberties)
-        #result = 0
+        cust_x, cust_y = self.ind2xy(cust_agent_loc)
+        distance = 7 - math.sqrt((cust_x - 4)**2 + (cust_y - 5)**2)
+        result = distance * (len(cust_agent_liberties) - 2 * len(opp_liberties))
         return result
-
-    def check_partition(self, cust_agent_loc, opp_loc, opp_liberties):
-        cust_x, cust_y = DebugState.ind2xy(cust_agent_loc)
-        opp_x, opp_y = DebugState.ind2xy(opp_loc)
-
-        result = 1
-
-        if opp_x > cust_x and opp_x - cust_x < 3 and cust_x > 6:
-            result += self.get_blocked(cust_x, cust_y, opp_liberties, True, False, False, False)
-
-        if opp_x < cust_x and cust_x - opp_x < 3 and cust_x < 2:
-            result += self.get_blocked(cust_x, cust_y, opp_liberties, False, True, False, False)
-
-        if opp_y > cust_y and opp_y - cust_y < 3 and cust_y > 8:
-            result += self.get_blocked(cust_x, cust_y, opp_liberties, False, False, True, False)
-
-        if opp_y < cust_y and cust_y - opp_y < 3 and cust_y < 2:
-            result += self.get_blocked(cust_x, cust_y, opp_liberties, False, False, False, True)
-
-        
-        return result
-    
-    def get_blocked(self, cust_x, cust_y, opp_liberties, left, right, top, bottom):
-
-        blocked = True
-        for liberty in opp_liberties.locs:
-            opp_x, opp_y = DebugState.ind2xy(liberty)
-
-            if left and opp_x <= cust_x:
-                blocked = False
-                break
-
-            if right and opp_x >= cust_x:
-                blocked = False
-                break
-
-            if top and opp_y >= cust_y:
-                blocked = False
-                break
-
-            if bottom and opp_y <= cust_x:
-                blocked = False
-                break
-
-        if blocked:
-            return 1
-
-        return 0
